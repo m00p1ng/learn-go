@@ -37,11 +37,13 @@ func add(rw http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func StartExplorer() {
+func Start(aPort int) {
+	handler := http.NewServeMux()
+	port := fmt.Sprintf("localhost:%d", aPort)
 	templates = template.Must(template.ParseGlob(templateDir + "pages/*.go.html"))
 	templates = template.Must(templates.ParseGlob(templateDir + "partials/*.go.html"))
-	http.HandleFunc("/", home)
-	http.HandleFunc("/add", add)
-	fmt.Println("Listening on http://localhost:4000")
-	log.Fatal(http.ListenAndServe("localhost:4000", nil))
+	handler.HandleFunc("/", home)
+	handler.HandleFunc("/add", add)
+	fmt.Printf("Listening on %s", port)
+	log.Fatal(http.ListenAndServe(port, handler))
 }

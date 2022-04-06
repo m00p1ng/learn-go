@@ -1,7 +1,9 @@
 package main
 
-import "github.com/m00p1ng/learn-go/nomadcoin/explorer"
+import (
+	"github.com/m00p1ng/learn-go/nomadcoin/rest"
+)
 
 func main() {
-	explorer.StartExplorer()
+	rest.Start(4000)
 }
