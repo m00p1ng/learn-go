@@ -35,24 +35,24 @@ func getLastHash() string {
 
 func createBlock(data string) *block {
 	newBlock := block{data, "", getLastHash()}
-  newBlock.calculateHash()
-  return &newBlock
+	newBlock.calculateHash()
+	return &newBlock
 }
 
 func (b *blockchain) AddBlock(data string) {
-  b.blocks = append(b.blocks, createBlock(data))
+	b.blocks = append(b.blocks, createBlock(data))
 }
 
 func GetBlockChain() *blockchain {
 	if b == nil {
 		once.Do(func() {
 			b = &blockchain{}
-      b.AddBlock("Genesis block")
+			b.AddBlock("Genesis block")
 		})
 	}
 	return b
 }
 
 func (b *blockchain) AllBlocks() []*block {
-  return b.blocks
+	return b.blocks
 }
