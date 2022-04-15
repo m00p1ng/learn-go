@@ -24,7 +24,7 @@ type urlDescription struct {
 	URL         url    `json:"url"`
 	Method      string `json:"method"`
 	Description string `json:"description"`
-	Payload string `json:"payload"`
+	Payload     string `json:"payload"`
 }
 
 type addBlockBody struct {
@@ -43,19 +43,24 @@ func documentation(rw http.ResponseWriter, r *http.Request) {
 			Description: "See Documentation",
 		},
 		{
-			URL:    url("/blocks"),
-			Method: "GET",
+			URL:         url("/status"),
+			Method:      "GET",
+			Description: "See the Status of the Blockchain",
+		},
+		{
+			URL:         url("/blocks"),
+			Method:      "GET",
 			Description: "See All Blocks",
 		},
 		{
-			URL:    url("/blocks"),
-			Method: "POST",
+			URL:         url("/blocks"),
+			Method:      "POST",
 			Description: "Add A block",
-			Payload: "data:string",
+			Payload:     "data:string",
 		},
 		{
-			URL: url("/blocks/{hash}"),
-			Method: "GET",
+			URL:         url("/blocks/{hash}"),
+			Method:      "GET",
 			Description: "See A Block",
 		},
 	}
@@ -93,11 +98,16 @@ func jsonContentTypeMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func status(rw http.ResponseWriter, r *http.Request) {
+	json.NewEncoder(rw).Encode(blockchain.Blockchain())
+}
+
 func Start(aPort int) {
 	router := mux.NewRouter()
 	port = fmt.Sprintf("localhost:%d", aPort)
 	router.Use(jsonContentTypeMiddleware)
 	router.HandleFunc("/", documentation).Methods("GET")
+	router.HandleFunc("/status", status)
 	router.HandleFunc("/blocks", blocks).Methods("GET", "POST")
 	router.HandleFunc("/blocks/{hash:[a-f0-9]+}", block).Methods("GET")
 	fmt.Printf("Listening on %s\n", port)
