@@ -17,3 +17,24 @@ POST http://localhost:4000/blocks
 ### GET Block 1
 
 GET http://localhost:4000/blocks/77a09c5ac280bd0b4de51e1f0c933432b6a48759d8f855ddb815dda46ce84e6d
+
+###
+
+POST http://localhost:4000/transactions
+
+{
+  "to": "eiei",
+  "amount": 20
+}
+
+###
+GET http://localhost:4000/mempool
+
+
+###
+GET http://localhost:4000/balance/eiei
+
+
+###
+GET http://localhost:4000/balance/mooping
+GET http://localhost:4000/balance/mooping?total=true
