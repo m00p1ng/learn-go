@@ -32,9 +32,11 @@ GET http://localhost:4000/mempool
 
 
 ###
-GET http://localhost:4000/balance/eiei
-
+GET http://localhost:4000/balance/e75e14f43c7965d4a3d0b325fa213ceda52edc47ff5f75d448031a0c25f9495a75d99a5e950b813ca90b8888ceefb027b89c19627a5d655d460492fb23b6fad5
 
 ###
-GET http://localhost:4000/balance/mooping
+GET http://localhost:4000/balance/eiei
 GET http://localhost:4000/balance/mooping?total=true
+
+###
+GET http://localhost:4000/wallet
