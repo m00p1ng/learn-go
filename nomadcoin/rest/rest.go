@@ -8,6 +8,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/m00p1ng/learn-go/nomadcoin/blockchain"
+	"github.com/m00p1ng/learn-go/nomadcoin/p2p"
 	"github.com/m00p1ng/learn-go/nomadcoin/utils"
 	"github.com/m00p1ng/learn-go/nomadcoin/wallet"
 )
@@ -44,6 +45,11 @@ type errorResponse struct {
 type addTxPayload struct {
 	To     string
 	Amount int
+}
+
+type addPeerPayload struct {
+	Address string
+	Port    string
 }
 
 func documentation(rw http.ResponseWriter, r *http.Request) {
@@ -158,6 +164,18 @@ func myWallet(rw http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(rw).Encode(myWalletResponse{Address: address})
 }
 
+func peers(rw http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "POST":
+		var payload addPeerPayload
+		json.NewDecoder(r.Body).Decode(&payload)
+		p2p.AddPeer(payload.Address, payload.Port, port)
+		rw.WriteHeader(http.StatusOK)
+	case "GET":
+		json.NewEncoder(rw).Encode(p2p.Peers)
+	}
+}
+
 func Start(aPort int) {
 	router := mux.NewRouter()
 	port = fmt.Sprintf("localhost:%d", aPort)
@@ -170,6 +188,8 @@ func Start(aPort int) {
 	router.HandleFunc("/mempool", mempool).Methods("GET")
 	router.HandleFunc("/wallet", myWallet).Methods("GET")
 	router.HandleFunc("/transactions", transactions).Methods("POST")
+	router.HandleFunc("/ws", p2p.Upgrade).Methods("GET")
+	router.HandleFunc("/peers", peers).Methods("POST")
 	fmt.Printf("Listening on %s\n", port)
 	log.Fatal(http.ListenAndServe(port, router))
 }
