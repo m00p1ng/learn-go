@@ -25,5 +25,6 @@ func AddPeer(address, port, openPort string) {
 	uri := fmt.Sprintf("ws://%s:%s/ws?openPort=%s", address, port, openPort[1:])
 	conn, _, err := websocket.DefaultDialer.Dial(uri, nil)
 	utils.HandleErr(err)
-	initPeer(conn, address, port)
+	p := initPeer(conn, address, port)
+	sendNewestBlock(p)
 }

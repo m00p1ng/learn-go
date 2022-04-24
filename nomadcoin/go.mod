@@ -2,10 +2,9 @@ module github.com/m00p1ng/learn-go/nomadcoin
 
 go 1.17
 
-require (
-	github.com/boltdb/bolt v1.3.1
-	github.com/gorilla/mux v1.8.0
-)
+require github.com/gorilla/mux v1.8.0
+
+require go.etcd.io/bbolt v1.3.6
 
 require (
 	github.com/gorilla/websocket v1.5.0
