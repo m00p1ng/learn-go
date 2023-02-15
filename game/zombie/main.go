@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"time"
@@ -9,12 +10,13 @@ import (
 	"github.com/gdamore/tcell"
 )
 
-const GameFrameWidth = 30
-const GameFrameHeight = 15
+const GameFrameWidth = 80
+const GameFrameHeight = 25
 const GameFrameSymbol = '|'
 
 type Point struct {
 	row, col int
+	symbol   rune
 }
 
 type GameObject struct {
@@ -27,6 +29,10 @@ var isGameOver bool
 var isGamePaused bool
 var debugLog string
 var score int
+
+var player *GameObject
+var zombies []*GameObject
+var bullets []*GameObject
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
@@ -55,6 +61,127 @@ func UpdateState() {
 	if isGamePaused {
 		return
 	}
+
+	MoveGameObjects(append(append(zombies, bullets...), player))
+	UpdateZombies()
+	CollisionDetection()
+}
+
+func UpdateZombies() {
+	spawnChance := rand.Intn(100)
+	if spawnChance < 5 {
+		SpawnZombie()
+	}
+}
+
+func SpawnZombie() {
+	originRow, originCol := rand.Intn(GameFrameHeight-3), GameFrameWidth-2
+	zombies = append(zombies, &GameObject{
+		points: []*Point{
+			{row: originRow, col: originCol, symbol: '0'},
+			{row: originRow + 1, col: originCol, symbol: '|'},
+			{row: originRow + 1, col: originCol - 1, symbol: '\\'},
+			{row: originRow + 2, col: originCol, symbol: '|'},
+			{row: originRow + 3, col: originCol - 1, symbol: '/'},
+			{row: originRow + 3, col: originCol + 1, symbol: '\\'},
+		},
+		velRow: 0, velCol: -1,
+	})
+}
+
+func MoveGameObjects(objs []*GameObject) {
+	for _, obj := range objs {
+		for i := range obj.points {
+			obj.points[i].row += obj.velRow
+			obj.points[i].col += obj.velCol
+		}
+	}
+}
+
+func CollisionDetection() {
+	RemoveObjectsOutOfBounds()
+	HandleZombiePlayerCollision()
+	HandleZombieBulletCollision()
+}
+
+func RemoveObjectsOutOfBounds() {
+	ObjectOutOfBoundsCollision(zombies, true, func(_ int) {
+		isGameOver = true
+	})
+
+	bulletsToRemove := []*GameObject{}
+	bullets = RemoveGameObjects(bullets, bulletsToRemove)
+}
+
+func HandleZombiePlayerCollision() {
+	for _, z := range zombies {
+		if AreObjectsColliding(player, z, 1) {
+			isGameOver = true
+		}
+	}
+}
+
+func HandleZombieBulletCollision() {
+	bulletsToRemove := []*GameObject{}
+	zombiesToRemove := []*GameObject{}
+	for _, b := range bullets {
+		for _, z := range zombies {
+			if AreObjectsColliding(b, z, 1) {
+				bulletsToRemove = append(bulletsToRemove, b)
+				zombiesToRemove = append(zombiesToRemove, z)
+				score++
+				break
+			}
+		}
+	}
+
+	bullets = RemoveGameObjects(bullets, bulletsToRemove)
+	zombies = RemoveGameObjects(zombies, zombiesToRemove)
+}
+
+func RemoveGameObjects(source, toRemove []*GameObject) []*GameObject {
+	result := []*GameObject{}
+	for _, obj1 := range source {
+		removed := false
+
+		for _, obj2 := range toRemove {
+			if obj1 == obj2 {
+				removed = true
+			}
+		}
+
+		if !removed {
+			result = append(result, obj1)
+		}
+	}
+
+	return result
+}
+
+func ObjectOutOfBoundsCollision(objs []*GameObject, lookAhead bool, callback func(int)) {
+	for i, obj := range objs {
+		velRow, velCol := obj.velRow, obj.velCol
+		if !lookAhead {
+			velRow, velCol = 0, 0
+		}
+
+		if IsObjectOutOfBounds(obj, velRow, velCol) {
+			callback(i)
+		}
+	}
+}
+
+func AreObjectsColliding(obj1, obj2 *GameObject, radius int) bool {
+	for _, p1 := range obj1.points {
+		for _, p2 := range obj2.points {
+			if math.Abs(float64(p1.row-p2.row)) <= float64(radius) &&
+				math.Abs(float64(p1.col-p2.col)) <= float64(radius) {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func DrawState() {
@@ -65,8 +192,17 @@ func DrawState() {
 	screen.Clear()
 	PrintString(0, 0, debugLog)
 	PrintGameFrame()
+	PrintGameObjects(append(append(zombies, bullets...), player))
 
 	screen.Show()
+}
+
+func PrintGameObjects(objs []*GameObject) {
+	for _, obj := range objs {
+		for _, p := range obj.points {
+			PrintFilledRectInGameFrame(p.row, p.col, 1, 1, p.symbol)
+		}
+	}
 }
 
 func InitScreen() {
@@ -89,19 +225,65 @@ func InitScreen() {
 }
 
 func InitGameState() {
+	player = &GameObject{
+		points: []*Point{
+			{row: 5, col: 1, symbol: '0'},
+			{row: 6, col: 1, symbol: '|'},
+			{row: 7, col: 1, symbol: '|'},
+			{row: 6, col: 2, symbol: '-'},
+			{row: 6, col: 3, symbol: '-'},
+			{row: 6, col: 4, symbol: '-'},
+			{row: 8, col: 0, symbol: '/'},
+			{row: 8, col: 2, symbol: '\\'},
+		},
+	}
 }
 
 func HandleUserInput(key string) {
 	if key == "Rune[q]" {
 		screen.Fini()
 		os.Exit(0)
-	} else if key == "Rune[w]" {
-	} else if key == "Rune[a]" {
-	} else if key == "Rune[s]" {
-	} else if key == "Rune[d]" {
+	} else if key == "Rune[w]" && !IsObjectOutOfBounds(player, -1, 0) {
+		MovePlayer(-1, 0)
+	} else if key == "Rune[a]" && !IsObjectOutOfBounds(player, 0, -1) {
+		MovePlayer(0, -1)
+	} else if key == "Rune[s]" && !IsObjectOutOfBounds(player, 1, 0) {
+		MovePlayer(1, 0)
+	} else if key == "Rune[d]" && !IsObjectOutOfBounds(player, 0, 1) {
+		MovePlayer(0, 1)
 	} else if key == "Rune[p]" {
 		isGamePaused = !isGamePaused
+	} else if key == "Enter" {
+		SpawnBullet(player.points[0].row+1, player.points[0].col+3)
 	}
+}
+
+func MovePlayer(velRow, velCol int) {
+	for i := range player.points {
+		player.points[i].row += velRow
+		player.points[i].col += velCol
+	}
+}
+
+func SpawnBullet(row, col int) {
+	bullets = append(bullets, &GameObject{
+		points: []*Point{
+			{row: row, col: col, symbol: '*'},
+		},
+		velRow: 0, velCol: 2,
+	})
+}
+
+func IsObjectOutOfBounds(obj *GameObject, velRow, velCol int) bool {
+	for _, p := range obj.points {
+		targetRow, targetCol := p.row+velRow, p.col+velCol
+		if targetRow < 0 || targetRow >= GameFrameHeight ||
+			targetCol < 0 || targetCol >= GameFrameWidth {
+			return true
+		}
+	}
+
+	return false
 }
 
 func InitUserInput() chan string {
